@@ -43,7 +43,6 @@ def convert_file(fpath, session_start_time,
 
         pos_data = np.array([x, y]).T
 
-
     # write to NWB
     nwbfile = NWBFile(source, session_description, identifier,
                       session_start_time, datetime.now(),
