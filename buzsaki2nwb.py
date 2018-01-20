@@ -17,7 +17,7 @@ from .utils import find_discontinuities, isin_time_windows
 fname = 'YutaMouse41-150903'
 fpath = os.path.join('..', 'data', fname)
 
-session_description = 'simulated MEC and LEC data'
+session_description = 'place cell spiking during exploration'
 identifier = fname
 session_start_time = datetime(2015, 7, 31)
 institution = 'NYU'
@@ -33,7 +33,7 @@ nwbfile = NWBFile(source, session_description, identifier,
 
 ## get experiment names and position data
 
-pos_files = glob(fpath + '/' + fname + '*.mat')
+pos_files = glob(os.path.join(fpath, fname + '*.mat'))
 
 experiments = {}
 for file in pos_files:
