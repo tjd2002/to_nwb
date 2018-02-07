@@ -12,7 +12,7 @@ from pynwb.behavior import SpatialSeries, Position
 from .utils import pairwise
 
 
-def convert_file(fpath, session_start_time,
+def convert_file1(fpath, session_start_time,
                  session_description='simulated MEC and LEC data'):
 
     fname = os.path.split(fpath)[1]
@@ -63,5 +63,76 @@ def convert_file(fpath, session_start_time,
 
     rf_module.add_container(unit_times)
     rf_module.add_container(behav_ts)
+    
+def get_neuroh5_cell_data(fname='dentatenet_spikeout_Full_Scale_Control_7941551.bw.h5'):
+    # process NeuroH5 file
+    fpath = os.path.join('../data', fname)
+
+    cell_index = []
+    all_cell_types = []
+    value_pointer = []
+    value = []
+    with File(fpath, 'r') as f:
+        pops = f['Populations']
+        for cell_type in pops:
+            spike_struct = pops[cell_type]['Spike Events']['t']
+            n = len(spike_struct['Cell Index'])
+
+            all_cell_types += [cell_type] * n
+
+            this_cell_index = spike_struct['Cell Index'][:]
+            if cell_index:
+                this_cell_index = this_cell_index + 1 + max(cell_index)
+            cell_index += list(this_cell_index)
+
+            this_value_pointer = spike_struct['Attribute Pointer'][:]
+            if value_pointer:
+                this_value_pointer = this_value_pointer[1:] + max(value_pointer)
+            value_pointer += list(this_value_pointer)
+
+            value += list(spike_struct['Attribute Value'][:])
+
+      unique_cell_types, cell_type_indices = np.unique(all_cell_types,
+                                                       return_inverse=True)
+      
+  return {'cell_index': cell_index, 'unique_cell_types': unique_cell_types,
+          'cell_type_indices': cell_type_indices,
+          'value_pointer': value_pointer, 'value': value}
+
+def write_nwb(data, fpath='../data/example12.nwb'):
+    fname = os.path.split(fpath)[0]
+    source = fname[:-3]
+    f = NWBFile(file_name=fname,
+                source=source,
+                session_description=fname[:-3],
+                identifier=fname[:-3],
+                session_start_time=datetime.now(),
+                lab='Soltesz',
+                institution='Stanford')
+
+    ns_path = "soltesz.namespace.yaml"
+    ext_source = "soltesz.extensions.yaml"
+
+    PopulationSpikeTimes = get_class('PopulationSpikeTimes', 'soltesz')
+    CatCellInfo = get_class('CatCellInfo', 'soltesz')
+
+    population_module = f.create_processing_module(name='0', source='source',
+                                                   description='description')
+
+    population_module.add_container(CatCellInfo(name='cell_types',
+                                                source=source,
+                                                values=data['unique_cell_types'],
+                                                indices=data['cell_type_indices'],
+                                                cell_index=data['cell_index']))
+
+    population_module.add_container(PopulationSpikeTimes(name='population_spike_times',
+                                                         source=source,
+                                                         cell_index=data['cell_index'],
+                                                         value=data['values'],
+                                                         pointer=data['value_pointer']))
+
+    io = NWBHDF5IO(fpath, mode='w')
+    io.write(f)
+    io.close()
 
 
