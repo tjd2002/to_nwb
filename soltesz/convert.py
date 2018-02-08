@@ -5,11 +5,12 @@ from tqdm import tqdm
 from datetime import datetime
 import numpy as np
 
-from pynwb import NWBFile, NWBHDF5IO
+from pynwb import NWBFile, NWBHDF5IO, get_class, load_namespaces
 from pynwb.misc import SpikeUnit, UnitTimes
 from pynwb.behavior import SpatialSeries, Position
+from pynwb.form.backends.hdf5 import H5DataIO
 
-from .utils import pairwise
+from utils import pairwise
 
 
 def convert_file1(fpath, session_start_time,
@@ -63,7 +64,8 @@ def convert_file1(fpath, session_start_time,
 
     rf_module.add_container(unit_times)
     rf_module.add_container(behav_ts)
-    
+
+
 def get_neuroh5_cell_data(fname='dentatenet_spikeout_Full_Scale_Control_7941551.bw.h5'):
     # process NeuroH5 file
     fpath = os.path.join('../data', fname)
@@ -92,14 +94,33 @@ def get_neuroh5_cell_data(fname='dentatenet_spikeout_Full_Scale_Control_7941551.
 
             value += list(spike_struct['Attribute Value'][:])
 
-      unique_cell_types, cell_type_indices = np.unique(all_cell_types,
+        unique_cell_types, cell_type_indices = np.unique(all_cell_types,
                                                        return_inverse=True)
-      
-  return {'cell_index': cell_index, 'unique_cell_types': unique_cell_types,
-          'cell_type_indices': cell_type_indices,
-          'value_pointer': value_pointer, 'value': value}
 
-def write_nwb(data, fpath='../data/example12.nwb'):
+    return {'cell_index': cell_index, 'unique_cell_types': unique_cell_types,
+            'cell_type_indices': cell_type_indices,
+            'value_pointer': value_pointer, 'value': value}
+
+
+def write_nwb(cell_data, fpath='../data/example12.nwb', compress=True):
+    """
+
+    Parameters
+    ----------
+    cell_data: dict
+        output of get_neuroh5_cell_data
+    fpath: str
+    compress: bool, optional
+        if True, will compress all data. default=True
+
+    Returns
+    -------
+
+    """
+    if compress:
+        cell_data = {key: H5DataIO(val, compress=True)
+                     for key, val in cell_data.items()}
+
     fname = os.path.split(fpath)[0]
     source = fname[:-3]
     f = NWBFile(file_name=fname,
@@ -111,7 +132,8 @@ def write_nwb(data, fpath='../data/example12.nwb'):
                 institution='Stanford')
 
     ns_path = "soltesz.namespace.yaml"
-    ext_source = "soltesz.extensions.yaml"
+
+    load_namespaces(ns_path)
 
     PopulationSpikeTimes = get_class('PopulationSpikeTimes', 'soltesz')
     CatCellInfo = get_class('CatCellInfo', 'soltesz')
@@ -119,17 +141,17 @@ def write_nwb(data, fpath='../data/example12.nwb'):
     population_module = f.create_processing_module(name='0', source='source',
                                                    description='description')
 
-    population_module.add_container(CatCellInfo(name='cell_types',
-                                                source=source,
-                                                values=data['unique_cell_types'],
-                                                indices=data['cell_type_indices'],
-                                                cell_index=data['cell_index']))
+    population_module.add_container(
+        CatCellInfo(name='cell_types', source=source,
+                    values=cell_data['unique_cell_types'],
+                    indices=cell_data['cell_type_indices'],
+                    cell_index=cell_data['cell_index']))
 
-    population_module.add_container(PopulationSpikeTimes(name='population_spike_times',
-                                                         source=source,
-                                                         cell_index=data['cell_index'],
-                                                         value=data['values'],
-                                                         pointer=data['value_pointer']))
+    population_module.add_container(
+        PopulationSpikeTimes(name='population_spike_times', source=source,
+                             cell_index=cell_data['cell_index'],
+                             value=cell_data['value'],
+                             pointer=cell_data['value_pointer']))
 
     io = NWBHDF5IO(fpath, mode='w')
     io.write(f)
