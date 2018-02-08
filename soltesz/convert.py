@@ -66,9 +66,8 @@ def convert_file1(fpath, session_start_time,
     rf_module.add_container(behav_ts)
 
 
-def get_neuroh5_cell_data(fname='dentatenet_spikeout_Full_Scale_Control_7941551.bw.h5'):
+def get_neuroh5_cell_data(fpath='../data/dentatenet_spikeout_Full_Scale_Control_7941551.bw.h5'):
     # process NeuroH5 file
-    fpath = os.path.join('../data', fname)
 
     cell_index = []
     all_cell_types = []
