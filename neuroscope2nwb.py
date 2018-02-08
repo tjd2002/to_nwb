@@ -7,8 +7,8 @@ from scipy.io import loadmat
 
 from datetime import datetime
 from pynwb import NWBFile, NWBHDF5IO
-from pynwb.ephys import ElectricalSeries, LFP, Clustering
-form pynwb import SpatialSeries
+from pynwb.ecephys import ElectricalSeries, LFP, Clustering
+from pynwb.behavior import SpatialSeries
 
 from .utils import find_discontinuities
 
