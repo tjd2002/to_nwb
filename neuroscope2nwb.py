@@ -1,16 +1,20 @@
-from bs4 import BeautifulSoup
 import os
+from datetime import datetime
+from functools import partialmethod
+
 import numpy as np
 import pandas as pd
-from glob import glob
+from bs4 import BeautifulSoup
+from pynwb import NWBFile, NWBHDF5IO
+from pynwb.behavior import SpatialSeries, Position
+from pynwb.ecephys import ElectricalSeries, Clustering
+from pynwb.form.backends.hdf5 import H5DataIO
 from scipy.io import loadmat
 
-from datetime import datetime
-from pynwb import NWBFile, NWBHDF5IO
-from pynwb.ecephys import ElectricalSeries, LFP, Clustering
-from pynwb.behavior import SpatialSeries
+from utils import find_discontinuities
 
-from .utils import find_discontinuities
+gzip = H5DataIO
+gzip.__init__ = partialmethod(H5DataIO.__init__, compress=True)
 
 
 def load_xml(filepath):
@@ -21,6 +25,19 @@ def load_xml(filepath):
 
 
 def get_channel_groups(fpath, fname):
+    """Get the groups of channels that are recorded on each shank from the xml
+    file
+
+    Parameters
+    ----------
+    fpath: str
+    fname: str
+
+    Returns
+    -------
+    list(list)
+
+    """
     xml_filepath = os.path.join(fpath, fname + '.xml')
     soup = load_xml(xml_filepath)
 
@@ -32,6 +49,17 @@ def get_channel_groups(fpath, fname):
 
 
 def get_shank_channels(fpath, fname):
+    """Read the channels on the shanks in Neuroscope xml
+
+    Parameters
+    ----------
+    fpath
+    fname
+
+    Returns
+    -------
+
+    """
     xml_filepath = os.path.join(fpath, fname + '.xml')
     soup = load_xml(xml_filepath)
 
@@ -42,15 +70,43 @@ def get_shank_channels(fpath, fname):
 
 
 def get_lfp_sampling_rate(fpath, fname):
+    """Reads the LFP Sampling Rate from the xml parameter file of the
+    Neuroscope format
+
+    Parameters
+    ----------
+    fpath: str
+    fname: str
+
+    Returns
+    -------
+    fs: float
+
+    """
     xml_filepath = os.path.join(fpath, fname + '.xml')
     soup = load_xml(xml_filepath)
 
     return float(soup.lfpSamplingRate.string)
 
 
-def get_position_data(fpath, fname, fs=1250./32.):
+def get_position_data(fpath, fname, fs=1250./32.,
+                      names=('x0', 'y0', 'x1', 'y1')):
+    """Read raw position sensor data from .whl file
+
+    Parameters
+    ----------
+    fpath: str
+    fname: str
+    fs: float
+    names: iterable
+        names of column headings
+
+    Returns
+    -------
+    df: pandas.DataFrame
+    """
     df = pd.read_csv(os.path.join(fpath, fname + '.whl'),
-                     sep='\t', names=('x0', 'y0', 'x1', 'y1'))
+                     sep='\t', names=names)
 
     df.index = np.arange(len(df)) / fs
     df.index.name = 'tt (sec)'
@@ -58,7 +114,26 @@ def get_position_data(fpath, fname, fs=1250./32.):
     return df
 
 
-def get_clusters(fpath, fname, shankn):
+def get_clusters_single_shank(fpath, fname, shankn):
+    """Read the spike time data for a from the .res and .clu files for a single
+    shank. Automatically removes noise and multi-unit.
+
+    Parameters
+    ----------
+    fpath: path
+        file path
+    fname: path
+        file name
+    shankn: int
+        shank number
+
+    Returns
+    -------
+    df: pd.DataFrame
+        has column named 'id' which indicates cluster id and 'time' which
+        indicates spike time.
+
+    """
     timing_file = os.path.join(fpath, fname + '.res.' + str(shankn))
     id_file = os.path.join(fpath, fname + '.clu.' + str(shankn))
 
@@ -74,10 +149,8 @@ def get_clusters(fpath, fname, shankn):
     return df
 
 
-
-
 fname = 'YutaMouse41-150903'
-fpath = '../../Buzsaki/SenzaiBuzsaki2017/' + fname
+fpath = '/Users/bendichter/Desktop/Buzsaki/SenzaiBuzsaki2017/YutaMouse41-150903'
 session_description = 'simulated MEC and LEC data'
 identifier = fname
 session_start_time = datetime(2015, 7, 31)
@@ -89,7 +162,8 @@ source=fname
 nwbfile = NWBFile(source, session_description, identifier,
                   session_start_time, datetime.now(),
                   institution=institution, lab=lab)
-module = nwbfile.create_processing_module(name='0', source=source, description=source)
+module = nwbfile.create_processing_module(name='0', source=source,
+                                          description=source)
 
 
 channel_groups = get_channel_groups(fpath, fname)
@@ -101,28 +175,31 @@ lfp_fs = get_lfp_sampling_rate(fpath, fname)
 
 lfp_channel = 0  # value taken from Yuta's spreadsheet
 
+print('reading raw position data...', end='')
 pos_df = get_position_data(fpath, fname)
+print('done.')
 
+print('setting up raw position data...', end='')
 # raw position sensors file
 pos0 = nwbfile.add_acquisition(
-    SpatialSeries('sensor0',
+    SpatialSeries('position sensor0',
                   'raw sensor data from sensor 0',
-                  pos_df[['x0', 'y0']].values,
+                  gzip(pos_df[['x0', 'y0']].values),
                   'unknown',
-                  timestamps=pos_df.index.values,
+                  timestamps=gzip(pos_df.index.values),
                   resolution=np.nan))
-
 
 pos1 = nwbfile.add_acquisition(
-    SpatialSeries('sensor1',
+    SpatialSeries('position sensor1',
                   'raw sensor data from sensor 1',
-                  pos_df[['x1', 'y1']].values,
+                  gzip(pos_df[['x1', 'y1']].values),
                   'unknown',
-                  timestamps=pos_df.index.values,
+                  timestamps=gzip(pos_df.index.values),
                   resolution=np.nan))
+print('done.')
 
-
-# electrodes
+print('setting up electrodes...', end='')
+# shank electrodes
 electrode_counter = 0
 for shankn, channels in zip(range(nshanks), shank_channels):
     device_name = 'shank{}'.format(shankn)
@@ -137,8 +214,8 @@ for shankn, channels in zip(range(nshanks), shank_channels):
         nwbfile.add_electrode(channel,
                               np.nan, np.nan, np.nan,  # position?
                               imp=np.nan,
-                              location='blank',
-                              filtering='blank',
+                              location='unknown',
+                              filtering='unknown',
                               description='electrode {} of shank {}, channel {}'.format(
                                   electrode_counter, shankn, channel),
                               group=electrode_group)
@@ -149,21 +226,46 @@ for shankn, channels in zip(range(nshanks), shank_channels):
 
         electrode_counter += 1
 
+# special electrodes
+device_name = 'special_electrodes'
+device = nwbfile.create_device(device_name, fname + '.xml')
+electrode_group = nwbfile.create_electrode_group(
+    name=device_name + '_electrodes',
+    source=fname + '.xml',
+    description=device_name,
+    device=device,
+    location='unknown')
+special_electrode_dict = {'ch_wait': 79, 'ch_arm': 78, 'ch_solL': 76,
+                          'ch_solR': 77, 'ch_dig1': 65, 'ch_dig2': 68,
+                          'ch_entL': 72, 'ch_entR': 71, 'ch_SsolL': 73,
+                          'ch_SsolR': 70}
+for name, num in special_electrode_dict.items():
+    nwbfile.add_electrode(num,
+                          np.nan, np.nan, np.nan,
+                          imp=np.nan,
+                          location='unknown',
+                          filtering='unknown',
+                          description=name,
+                          group=electrode_group)
+    nwbfile.create_electrode_table_region([electrode_counter], name)
+    electrode_counter += 1
+
 all_table_region = nwbfile.create_electrode_table_region(
     list(range(electrode_counter)), 'all electrodes')
-
-
+print('done.')
 
 # lfp
+print('reading LFPs...', end='')
 lfp_file = os.path.join(fpath, fname + '.lfp')
-
 all_channels = np.fromfile(lfp_file, dtype=np.int16).reshape(-1, 80)
 all_channels_lfp = all_channels[:, all_shank_channels]
+print('done.')
 
+print('making ElectricalSeries objects for LFP...', end='')
 all_lfp = nwbfile.add_acquisition(
     ElectricalSeries('all_lfp',
                      'lfp signal for all shank electrodes',
-                     all_channels_lfp,
+                     gzip(all_channels_lfp),
                      all_table_region,
                      conversion=np.nan,
                      starting_time=0.0,
@@ -172,47 +274,65 @@ all_lfp = nwbfile.add_acquisition(
 
 lfp = nwbfile.add_acquisition(
     ElectricalSeries('lfp',
-                     'signal unsed as the reference lfp',
-                     all_channels[:, lfp_channel],
+                     'signal used as the reference lfp',
+                     gzip(all_channels[:, lfp_channel]),
                      lfp_table_region,
                      conversion=np.nan,
                      starting_time=0.0,
                      rate=lfp_fs,
                      resolution=np.nan))
+print('done.')
 
 # create epochs corresponding to experiments/environments for the mouse
-pos_files = glob(fpath + '/' + fname + '*.mat')
+task_types = ['OpenFieldPosition_ExtraLarge', 'OpenFieldPosition_New_Curtain',
+              'OpenFieldPosition_New', 'OpenFieldPosition_Old_Curtain',
+              'OpenFieldPosition_Old', 'OpenFieldPosition_Oldlast']
 
-experiments = {}
-for file in pos_files:
-    if ('StatePeriod' not in file) and ('ROI' not in file) and \
-            ('lfpphase' not in file) and ('session' not in file):
-        lab = file[file.find('__') + 2:-4]
-        matin = loadmat(file)
-        tt = matin['twhl_norm'][:, 0]
+experiment_epochs = []
+for label in task_types:
+    print('loading normalized position data for ' + label + '...', end='')
+    file = os.path.join(fpath, fname + '__' + label)
 
-        exp_times = find_discontinuities(tt)
+    matin = loadmat(file)
+    tt = matin['twhl_norm'][:, 0]
+    pos_data = matin['twhl_norm'][:, 1:3]
 
-        experiment_epochs = []
-        for i, window in enumerate(exp_times):
-            experiment_epochs.append(
-                nwbfile.create_epoch(source=source,
-                                     name=lab + '_' + str(i),
-                                     start=window[0], stop=window[1]))
+    exp_times = find_discontinuities(tt)
+
+    spatial_series_object = SpatialSeries(name=label + ' spatial_series',
+                                          source='position sensor0',
+                                          data=gzip(pos_data),
+                                          reference_frame='unknown',
+                                          conversion=np.nan,
+                                          resolution=np.nan,
+                                          timestamps=gzip(tt))
+    pos_obj = Position(source=source, spatial_series=spatial_series_object,
+                       name=label + ' position')
+
+    for i, window in enumerate(exp_times):
+        experiment_epochs.append(
+            nwbfile.create_epoch(source=source,
+                                 name=label + '_' + str(i),
+                                 start=window[0], stop=window[1]))
+    print('done.')
 
 # link epochs to all the relevant timeseries objects
-for ts in (pos0, pos1, all_channels, lfp):
-    nwbfile.set_epoch_timeseries(experiment_epochs, ts)
+
+nwbfile.set_epoch_timeseries(experiment_epochs, [pos0, pos1, lfp, all_lfp])
 
 
-for shank_num in np.arange(1, nshanks):
-    df = get_clusters(fpath, fname, shank_num)
+for shank_num in np.arange(1, nshanks + 1):
+    print('loading spike times for shank ' + str(shank_num) + '...', end='')
+    df = get_clusters_single_shank(fpath, fname, shank_num)
     clu = Clustering(source='source', description='noise and multiunit removed',
-                     num=df['id'], peak_over_rms=[np.nan], times=df['time'],
+                     num=np.array(df['id']), peak_over_rms=[np.nan],
+                     times=gzip(np.array(df['time'])),
                      name='shank' + str(shank_num))
     module.add_container(clu)
+    print('done.')
 
-
-io = NWBHDF5IO(fname + '.nwb', mode='w')
+print('writing NWB file...', end='')
+io = NWBHDF5IO('testy.nwb', mode='w')
 io.write(nwbfile)
 io.close()
+print('done.')
