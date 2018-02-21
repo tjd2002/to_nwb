@@ -5,7 +5,7 @@ from tqdm import tqdm
 from datetime import datetime
 import numpy as np
 
-from pynwb import NWBFile, NWBHDF5IO, get_class, load_namespaces
+from pynwb import NWBFile, NWBHDF5IO
 from pynwb.misc import SpikeUnit, UnitTimes
 from pynwb.behavior import SpatialSeries, Position
 from pynwb.form.backends.hdf5 import H5DataIO
@@ -21,7 +21,7 @@ def convert_file1(fpath, session_start_time,
     identifier = fname[:-4]
     institution = 'Stanford'
     lab = 'Soltesz'
-    source=fname[:-4]
+    source = fname[:-4]
 
     # extract data
     spike_units = []

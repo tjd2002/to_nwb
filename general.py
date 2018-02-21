@@ -1,7 +1,12 @@
+from functools import partialmethod
+
 from pynwb import load_namespaces
 from pynwb import get_class
 
 import numpy as np
+
+from pynwb.form.backends.hdf5 import H5DataIO as gzip
+gzip.__init__ = partialmethod(gzip.__init__, compress=True)
 
 # load custom classes
 name = 'general'

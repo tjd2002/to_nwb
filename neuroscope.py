@@ -1,14 +1,11 @@
 import os
-from functools import partialmethod
 
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
 
-from pynwb.form.backends.hdf5 import H5DataIO as gzip
-gzip.__init__ = partialmethod(gzip.__init__, compress=True)
-
 from pynwb import load_namespaces, get_class
+from general import gzip
 
 name = 'general'
 ns_path = name + '.namespace.yaml'
