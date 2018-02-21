@@ -10,3 +10,5 @@ mock_nwb_file = NWBFile(source='source',
                         institution='institution',
                         lab='lab')
 
+mock_processing_module = mock_nwb_file.create_processing_module()
+

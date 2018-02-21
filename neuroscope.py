@@ -8,6 +8,14 @@ from bs4 import BeautifulSoup
 from pynwb.form.backends.hdf5 import H5DataIO as gzip
 gzip.__init__ = partialmethod(gzip.__init__, compress=True)
 
+from pynwb import load_namespaces, get_class
+
+name = 'general'
+ns_path = name + '.namespace.yaml'
+
+load_namespaces(ns_path)
+PopulationSpikeTimes = get_class('PopulationSpikeTimes', name)
+
 
 def load_xml(filepath):
     with open(filepath, 'r') as xml_file:
@@ -139,3 +147,50 @@ def get_clusters_single_shank(fpath, fname, shankn):
     df['id'] -= 2
 
     return df
+
+
+def build_pop_spikes(fpath, fname, shanks=None, name='PopulationSpikeTimes',
+                     source=None, compress=True):
+    """Convert from .res and .clu files to parameters that go into
+    PopulationSpikeTimes
+
+    Parameters
+    ----------
+    fpath: str
+    fname: str
+    shanks: None | list(ints)
+        shank numbers to process. If None, use 1:8
+    name: str
+    source: str
+
+    Returns
+    -------
+    PopulationSpikeTimes Object
+
+    """
+    fnamepath = os.path.join(fpath, fname)
+
+    if shanks is None:
+        shanks = range(1, 9)
+
+    if source is None:
+        source = fnamepath + '.res.*; ' + fnamepath + '.clu.*'
+
+    values = []
+    pointers = [0, ]
+    for shank_num in shanks:
+        df = get_clusters_single_shank(fpath, fname, shank_num)
+        for cluster_num, idf, in df.groupby('id'):
+            values += list(idf['time'])
+            pointers.append(len(values))
+    cell_index = np.arange(len(pointers) - 1)
+
+    if compress:
+        cell_index = gzip(cell_index)
+        values = gzip(values)
+        pointers = gzip(pointers)
+
+    pst_obj = PopulationSpikeTimes(cell_index=cell_index, value=values,
+                                   pointer=pointers, name=name, source=source)
+
+    return pst_obj

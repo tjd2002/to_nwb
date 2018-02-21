@@ -11,6 +11,7 @@ from pynwb.behavior import SpatialSeries, Position
 from pynwb.form.backends.hdf5 import H5DataIO
 
 from utils import pairwise
+from general import PopulationSpikeTimes, CatCellInfo
 
 
 def convert_file1(fpath, session_start_time,
@@ -129,13 +130,6 @@ def write_nwb(cell_data, fpath='../data/example12.nwb', compress=True):
                 session_start_time=datetime.now(),
                 lab='Soltesz',
                 institution='Stanford')
-
-    ns_path = "soltesz.namespace.yaml"
-
-    load_namespaces(ns_path)
-
-    PopulationSpikeTimes = get_class('PopulationSpikeTimes', 'soltesz')
-    CatCellInfo = get_class('CatCellInfo', 'soltesz')
 
     population_module = f.create_processing_module(name='0', source='source',
                                                    description='description')
