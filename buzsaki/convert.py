@@ -1,18 +1,14 @@
 import os
-from glob import glob
 
-from tqdm import tqdm
 from datetime import datetime
 import numpy as np
-import pandas as pd
 from scipy.io import loadmat
 
 from pynwb import NWBFile, NWBHDF5IO
-from pynwb.misc import SpikeUnit, UnitTimes
 from pynwb.behavior import SpatialSeries, Position
 from pynwb.ecephys import ElectricalSeries, Clustering
 
-from utils import find_discontinuities, isin_time_windows
+from utils import find_discontinuities
 from neuroscope import (get_channel_groups, get_shank_channels,
                         get_lfp_sampling_rate, get_position_data, gzip,
                         get_clusters_single_shank)
@@ -236,6 +232,8 @@ for celltype_id, region_id in zip(celltype_ids, region_ids):
             raise Exception('unknown type')
     else:
         celltype_names.append(celltype_dict[celltype_id])
+
+
 
 
 print('writing NWB file...', end='')

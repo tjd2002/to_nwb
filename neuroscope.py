@@ -6,8 +6,6 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 from pynwb.form.backends.hdf5 import H5DataIO as gzip
-
-
 gzip.__init__ = partialmethod(gzip.__init__, compress=True)
 
 
