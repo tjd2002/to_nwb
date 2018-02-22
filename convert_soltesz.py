@@ -149,5 +149,7 @@ def write_nwb(cell_data, fpath='../data/example12.nwb', compress=True):
     io = NWBHDF5IO(fpath, mode='w')
     io.write(f)
     io.close()
+    # with NWBHDF5IO(fpath, mode='w') as io:
+    #    io.write()
 
 

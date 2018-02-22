@@ -1,4 +1,5 @@
 from pynwb.spec import NWBDatasetSpec, NWBNamespaceBuilder, NWBGroupSpec
+import h5py
 
 
 name = 'general'
@@ -13,7 +14,7 @@ data_val_spec = NWBDatasetSpec(doc='Data values indexed by pointer',
                                name='value', dtype='float')
 data_pointer_spec = NWBDatasetSpec(doc='Pointers that index data values',
                                    shape=(None, 1),
-                                   name='pointer', dtype='int')
+                                   name='pointer', dtype='RefSpec')
 
 gid_pointer_value_spec = [gid_spec, data_val_spec, data_pointer_spec]
 
@@ -23,7 +24,7 @@ cat_cell_info = NWBGroupSpec(neurodata_type_def='CatCellInfo',
                                        NWBDatasetSpec(name='indices',
                                                       doc='indices into values for each gid in order',
                                                       shape=(None, 1),
-                                                      dtype='int'),
+                                                      dtype='RefSpec'),
                                        NWBDatasetSpec(name='values',
                                                       doc='list of unique values',
                                                       shope=(None, 1), dtype='str')],

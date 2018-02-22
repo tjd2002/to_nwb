@@ -21,6 +21,7 @@ session_start_time = data[0].abstime
 nwbfile = NWBFile(source, session_description, identifier,
                   session_start_time, datetime.now(),
                   institution=institution, lab=lab)
+
 module = nwbfile.create_processing_module(name='0', source=source,
                                           description=source)
 
@@ -30,6 +31,7 @@ for trial_data in data:
     trial_data.time
     trial_data.abstime
     trial_data.events
+    trial_data.tempo_data
 
 
 

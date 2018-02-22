@@ -179,7 +179,7 @@ def build_pop_spikes(fpath, fname, shanks=None, name='PopulationSpikeTimes',
         df = get_clusters_single_shank(fpath, fname, shank_num)
         for cluster_num, idf, in df.groupby('id'):
             values += list(idf['time'])
-            pointers.append(len(values))
+            pointers.append()
     cell_index = np.arange(len(pointers) - 1)
 
     if compress:
