@@ -29,9 +29,9 @@ source = fname
 nwbfile = NWBFile(source, session_description, identifier,
                   session_start_time, datetime.now(),
                   institution=institution, lab=lab)
-module = nwbfile.create_processing_module(name='0', source=source,
-                                          description=source)
-
+module_behavior = nwbfile.create_processing_module(name='behavior',
+                                                   source=source,
+                                                   description=source)
 
 channel_groups = get_channel_groups(fpath, fname)
 shank_channels = get_shank_channels(fpath, fname)
@@ -176,7 +176,7 @@ for label in task_types:
     pos_obj = Position(source=source, spatial_series=spatial_series_object,
                        name=label + ' position')
 
-    module.add_container(pos_obj)
+    module_behavior.add_container(pos_obj)
 
     for i, window in enumerate(exp_times):
         experiment_epochs.append(
@@ -189,7 +189,9 @@ for label in task_types:
 
 nwbfile.set_epoch_timeseries(experiment_epochs, [pos0, pos1, lfp, all_lfp])
 
-
+module_clustering = nwbfile.create_processing_module(name='clustering',
+                                                     source=source,
+                                                     description=source)
 for shank_num in np.arange(1, nshanks + 1):
     print('loading spike times for shank ' + str(shank_num) + '...', end='')
     df = get_clusters_single_shank(fpath, fname, shank_num)
@@ -197,7 +199,7 @@ for shank_num in np.arange(1, nshanks + 1):
                      num=np.array(df['id']), peak_over_rms=[np.nan],
                      times=gzip(np.array(df['time'])),
                      name='shank' + str(shank_num))
-    module.add_container(clu)
+    module_clustering.add_container(clu)
     print('done.')
 
 ## load celltypes
@@ -239,23 +241,20 @@ for celltype_id, region_id in zip(celltype_ids, region_ids):
 
 u_cats, indices = np.unique(celltype_names, return_inverse=True)
 
-cci_obj = CatCellInfo(name='cell_types',
+cci_obj = CatCellInfo(name='Cell Types',
                       source='DG_all_6__UnitFeatureSummary_add.mat',
                       values=u_cats, indices=indices,
                       cell_index=list(range(len(indices))))
 
 pst_obj = build_pop_spikes(fpath, fname)
 
-module1 = nwbfile.create_processing_module('1', source=source,
-                                           description=source)
+module_spikes = nwbfile.create_processing_module('spikes', source=source,
+                                                 description=source)
 
-module1.add_container(pst_obj)
-module1.add_container(cci_obj)
+module_spikes.add_container(pst_obj)
+module_spikes.add_container(cci_obj)
 
 print('writing NWB file...', end='')
-# with NWBHDF5IO('testy.nwb', mode='w') as io:
-#   io.write(nwbfile)
-io = NWBHDF5IO('testy.nwb', mode='w')
-io.write(nwbfile)
-io.close()
+with NWBHDF5IO('yuta_data.nwb', mode='w') as io:
+    io.write(nwbfile)
 print('done.')

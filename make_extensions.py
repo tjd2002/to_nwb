@@ -1,5 +1,4 @@
 from pynwb.spec import NWBDatasetSpec, NWBNamespaceBuilder, NWBGroupSpec
-import h5py
 
 
 name = 'general'
@@ -39,4 +38,3 @@ ns_builder = NWBNamespaceBuilder(name + ' extensions', name)
 for spec in [population_spike_times, cat_cell_info]:
     ns_builder.add_spec(ext_source, spec)
 ns_builder.export(ns_path)
-

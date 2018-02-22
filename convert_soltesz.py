@@ -102,7 +102,7 @@ def get_neuroh5_cell_data(fpath='../data/dentatenet_spikeout_Full_Scale_Control_
             'value_pointer': value_pointer, 'value': value}
 
 
-def write_nwb(cell_data, fpath='../data/example12.nwb', compress=True):
+def write_nwb(cell_data, fpath='../data/soltesz_data.nwb', compress=True):
     """
 
     Parameters
@@ -131,25 +131,30 @@ def write_nwb(cell_data, fpath='../data/example12.nwb', compress=True):
                 lab='Soltesz',
                 institution='Stanford')
 
-    population_module = f.create_processing_module(name='0', source='source',
+    population_module = f.create_processing_module(name='spikes',
+                                                   source='source',
                                                    description='description')
 
     population_module.add_container(
-        CatCellInfo(name='cell_types', source=source,
+        CatCellInfo(name='Cell Types', source=source,
                     values=cell_data['unique_cell_types'],
                     indices=cell_data['cell_type_indices'],
                     cell_index=cell_data['cell_index']))
 
     population_module.add_container(
-        PopulationSpikeTimes(name='population_spike_times', source=source,
+        PopulationSpikeTimes(name='Population Spike Times', source=source,
                              cell_index=cell_data['cell_index'],
                              value=cell_data['value'],
                              pointer=cell_data['value_pointer']))
 
-    io = NWBHDF5IO(fpath, mode='w')
-    io.write(f)
-    io.close()
-    # with NWBHDF5IO(fpath, mode='w') as io:
-    #    io.write()
+    with NWBHDF5IO(fpath, mode='w') as io:
+        io.write()
 
 
+def main():
+    cell_data = get_neuroh5_cell_data(fpath='/Users/bendichter/Desktop/Soltesz/data/dentatenet_spikeout_Full_Scale_Control_7941551.bw.h5')
+    write_nwb(cell_data, fpath='/Users/bendichter/Desktop/Soltesz/data/soltesz_data.nwb')
+
+
+if __name__ == '__main__':
+    main()
