@@ -5,7 +5,10 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 from pynwb import load_namespaces, get_class
+from pynwb.misc import UnitTimes
 from general import gzip
+
+import pdb
 
 name = 'general'
 ns_path = name + '.namespace.yaml'
@@ -146,6 +149,45 @@ def get_clusters_single_shank(fpath, fname, shankn):
     return df
 
 
+def build_unit_times(fpath, fname, shanks=None, name='UnitTimes',
+                     source=None, compress=True):
+    """
+
+    Parameters
+    ----------
+    fpath: str
+    fname: str
+    shanks: None | list(ints)
+        shank numbers to process. If None, use 1:8
+    name: str
+    source: str
+    compress
+
+    Returns
+    -------
+
+    """
+
+    fnamepath = os.path.join(fpath, fname)
+
+    if shanks is None:
+        shanks = range(1, 9)
+
+    if source is None:
+        source = fnamepath + '.res.*; ' + fnamepath + '.clu.*'
+
+    ut = UnitTimes(name=name, source=source)
+
+    cell_counter = 0
+    for shank_num in shanks:
+        df = get_clusters_single_shank(fpath, fname, shank_num)
+        for cluster_num, idf, in df.groupby('id'):
+            ut.add_spike_times(cell_counter, list(idf['time']))
+            cell_counter += 1
+
+    return ut
+
+
 def build_pop_spikes(fpath, fname, shanks=None, name='Population Spike Times',
                      source=None, compress=True):
     """Convert from .res and .clu files to parameters that go into
@@ -165,6 +207,8 @@ def build_pop_spikes(fpath, fname, shanks=None, name='Population Spike Times',
     PopulationSpikeTimes Object
 
     """
+
+    raise Warning('DEPRICATED. USE UnitTimes')
     fnamepath = os.path.join(fpath, fname)
 
     if shanks is None:

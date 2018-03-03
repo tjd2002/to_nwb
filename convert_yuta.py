@@ -11,9 +11,12 @@ from pynwb.ecephys import ElectricalSeries, Clustering
 from utils import find_discontinuities
 from neuroscope import (get_channel_groups, get_shank_channels,
                         get_lfp_sampling_rate, get_position_data, gzip,
-                        get_clusters_single_shank, build_pop_spikes)
+                        get_clusters_single_shank, build_pop_spikes,
+                        build_unit_times)
 
 from general import CatCellInfo
+
+WRITE_ALL_LFPS = False
 
 
 fpath = '/Users/bendichter/Desktop/Buzsaki/SenzaiBuzsaki2017/YutaMouse41-150903'
@@ -32,6 +35,8 @@ nwbfile = NWBFile(source, session_description, identifier,
 module_behavior = nwbfile.create_processing_module(name='behavior',
                                                    source=source,
                                                    description=source)
+
+all_ts = []
 
 channel_groups = get_channel_groups(fpath, fname)
 shank_channels = get_shank_channels(fpath, fname)
@@ -55,6 +60,7 @@ pos0 = nwbfile.add_acquisition(
                   'unknown',
                   timestamps=gzip(pos_df.index.values),
                   resolution=np.nan))
+all_ts.append(pos0)
 
 pos1 = nwbfile.add_acquisition(
     SpatialSeries('position sensor1',
@@ -63,6 +69,7 @@ pos1 = nwbfile.add_acquisition(
                   'unknown',
                   timestamps=gzip(pos_df.index.values),
                   resolution=np.nan))
+all_ts.append(pos1)
 print('done.')
 
 print('setting up electrodes...', end='')
@@ -128,16 +135,19 @@ all_channels = np.fromfile(lfp_file, dtype=np.int16).reshape(-1, 80)
 all_channels_lfp = all_channels[:, all_shank_channels]
 print('done.')
 
-print('making ElectricalSeries objects for LFP...', end='')
-all_lfp = nwbfile.add_acquisition(
-    ElectricalSeries('all_lfp',
-                     'lfp signal for all shank electrodes',
-                     gzip(all_channels_lfp),
-                     all_table_region,
-                     conversion=np.nan,
-                     starting_time=0.0,
-                     rate=lfp_fs,
-                     resolution=np.nan))
+if WRITE_ALL_LFPS:
+    print('making ElectricalSeries objects for LFP...', end='')
+    all_lfp = nwbfile.add_acquisition(
+        ElectricalSeries('all_lfp',
+                         'lfp signal for all shank electrodes',
+                         gzip(all_channels_lfp),
+                         all_table_region,
+                         conversion=np.nan,
+                         starting_time=0.0,
+                         rate=lfp_fs,
+                         resolution=np.nan))
+    all_ts.append(all_lfp)
+
 
 lfp = nwbfile.add_acquisition(
     ElectricalSeries('lfp',
@@ -148,6 +158,7 @@ lfp = nwbfile.add_acquisition(
                      starting_time=0.0,
                      rate=lfp_fs,
                      resolution=np.nan))
+all_ts.append(lfp)
 print('done.')
 
 # create epochs corresponding to experiments/environments for the mouse
@@ -187,7 +198,7 @@ for label in task_types:
 
 # link epochs to all the relevant timeseries objects
 
-nwbfile.set_epoch_timeseries(experiment_epochs, [pos0, pos1, lfp, all_lfp])
+nwbfile.set_epoch_timeseries(experiment_epochs, all_ts)
 
 module_clustering = nwbfile.create_processing_module(name='clustering',
                                                      source=source,
@@ -246,15 +257,23 @@ cci_obj = CatCellInfo(name='Cell Types',
                       values=u_cats, indices=indices,
                       cell_index=list(range(len(indices))))
 
-pst_obj = build_pop_spikes(fpath, fname)
+ut_obj = build_unit_times(fpath, fname)
 
 module_spikes = nwbfile.create_processing_module('spikes', source=source,
                                                  description=source)
 
-module_spikes.add_container(pst_obj)
+#module_spikes.add_container(ut_obj)
 module_spikes.add_container(cci_obj)
 
+out_fname = 'yuta_data.nwb'
 print('writing NWB file...', end='')
-with NWBHDF5IO('yuta_data.nwb', mode='w') as io:
-    io.write(nwbfile)
+with NWBHDF5IO(out_fname, mode='w') as io:
+    io.write(nwbfile, cache_spec=False)
 print('done.')
+
+print('testing read...', end='')
+# test read
+with NWBHDF5IO(out_fname, mode='r') as io:
+    io.read()
+print('done.')
+
