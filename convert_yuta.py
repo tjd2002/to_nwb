@@ -11,8 +11,7 @@ from pynwb.ecephys import ElectricalSeries, Clustering
 from utils import find_discontinuities
 from neuroscope import (get_channel_groups, get_shank_channels,
                         get_lfp_sampling_rate, get_position_data, gzip,
-                        get_clusters_single_shank, build_pop_spikes,
-                        build_unit_times)
+                        get_clusters_single_shank, build_unit_times)
 
 from general import CatCellInfo
 
@@ -47,11 +46,11 @@ lfp_fs = get_lfp_sampling_rate(fpath, fname)
 
 lfp_channel = 0  # value taken from Yuta's spreadsheet
 
-print('reading raw position data...', end='')
+print('reading raw position data...', end='', flush=True)
 pos_df = get_position_data(fpath, fname)
 print('done.')
 
-print('setting up raw position data...', end='')
+print('setting up raw position data...', end='', flush=True)
 # raw position sensors file
 pos0 = nwbfile.add_acquisition(
     SpatialSeries('position sensor0',
@@ -72,7 +71,7 @@ pos1 = nwbfile.add_acquisition(
 all_ts.append(pos1)
 print('done.')
 
-print('setting up electrodes...', end='')
+print('setting up electrodes...', end='', flush=True)
 # shank electrodes
 electrode_counter = 0
 for shankn, channels in zip(range(nshanks), shank_channels):
@@ -129,14 +128,14 @@ all_table_region = nwbfile.create_electrode_table_region(
 print('done.')
 
 # lfp
-print('reading LFPs...', end='')
+print('reading LFPs...', end='', flush=True)
 lfp_file = os.path.join(fpath, fname + '.lfp')
 all_channels = np.fromfile(lfp_file, dtype=np.int16).reshape(-1, 80)
 all_channels_lfp = all_channels[:, all_shank_channels]
 print('done.')
 
 if WRITE_ALL_LFPS:
-    print('making ElectricalSeries objects for LFP...', end='')
+    print('making ElectricalSeries objects for LFP...', end='', flush=True)
     all_lfp = nwbfile.add_acquisition(
         ElectricalSeries('all_lfp',
                          'lfp signal for all shank electrodes',
@@ -168,7 +167,7 @@ task_types = ['OpenFieldPosition_ExtraLarge', 'OpenFieldPosition_New_Curtain',
 
 experiment_epochs = []
 for label in task_types:
-    print('loading normalized position data for ' + label + '...', end='')
+    print('loading normalized position data for ' + label + '...', end='', flush=True)
     file = os.path.join(fpath, fname + '__' + label)
 
     matin = loadmat(file)
@@ -262,16 +261,16 @@ ut_obj = build_unit_times(fpath, fname)
 module_spikes = nwbfile.create_processing_module('spikes', source=source,
                                                  description=source)
 
-#module_spikes.add_container(ut_obj)
+module_spikes.add_container(ut_obj)
 module_spikes.add_container(cci_obj)
 
 out_fname = 'yuta_data.nwb'
-print('writing NWB file...', end='')
+print('writing NWB file...', end='', flush=True)
 with NWBHDF5IO(out_fname, mode='w') as io:
     io.write(nwbfile, cache_spec=False)
 print('done.')
 
-print('testing read...', end='')
+print('testing read...', end='', flush=True)
 # test read
 with NWBHDF5IO(out_fname, mode='r') as io:
     io.read()
