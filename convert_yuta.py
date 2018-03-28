@@ -7,6 +7,7 @@ from scipy.io import loadmat
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.behavior import SpatialSeries, Position
 from pynwb.ecephys import ElectricalSeries, Clustering
+from pynwb.epoch import Epochs
 
 from utils import find_discontinuities
 from neuroscope import (get_channel_groups, get_shank_channels,
@@ -20,7 +21,7 @@ WRITE_ALL_LFPS = False
 
 fpath = '/Users/bendichter/Desktop/Buzsaki/SenzaiBuzsaki2017/YutaMouse41-150903'
 fpath_base, fname = os.path.split(fpath)
-session_description = 'mouse in open exploration and circular 8-maze'
+session_description = 'mouse in open exploration and theta maze'
 identifier = fname
 session_start_time = datetime(2015, 7, 31)
 institution = 'NYU'
@@ -146,6 +147,7 @@ if WRITE_ALL_LFPS:
                          rate=lfp_fs,
                          resolution=np.nan))
     all_ts.append(all_lfp)
+    print('done.')
 
 
 lfp = nwbfile.add_acquisition(
@@ -158,14 +160,14 @@ lfp = nwbfile.add_acquisition(
                      rate=lfp_fs,
                      resolution=np.nan))
 all_ts.append(lfp)
-print('done.')
+
 
 # create epochs corresponding to experiments/environments for the mouse
 task_types = ['OpenFieldPosition_ExtraLarge', 'OpenFieldPosition_New_Curtain',
               'OpenFieldPosition_New', 'OpenFieldPosition_Old_Curtain',
               'OpenFieldPosition_Old', 'OpenFieldPosition_Oldlast']
 
-experiment_epochs = []
+epochs = Epochs(source=source)
 for label in task_types:
     print('loading normalized position data for ' + label + '...', end='', flush=True)
     file = os.path.join(fpath, fname + '__' + label)
@@ -189,15 +191,10 @@ for label in task_types:
     module_behavior.add_container(pos_obj)
 
     for i, window in enumerate(exp_times):
-        experiment_epochs.append(
-            nwbfile.create_epoch(source=source,
-                                 name=label + '_' + str(i),
-                                 start=window[0], stop=window[1]))
+        nwbfile.create_epoch(start_time=window[0], stop_time=window[1],
+                         tags=tuple(), description=label + '_' + str(i),
+                         timeseries=all_ts)
     print('done.')
-
-# link epochs to all the relevant timeseries objects
-
-nwbfile.set_epoch_timeseries(experiment_epochs, all_ts)
 
 module_clustering = nwbfile.create_processing_module(name='clustering',
                                                      source=source,
@@ -262,9 +259,9 @@ module_spikes = nwbfile.create_processing_module('spikes', source=source,
                                                  description=source)
 
 module_spikes.add_container(ut_obj)
-module_spikes.add_container(cci_obj)
+#module_spikes.add_container(cci_obj)
 
-out_fname = 'yuta_data.nwb'
+out_fname = 'yuta_data3.nwb'
 print('writing NWB file...', end='', flush=True)
 with NWBHDF5IO(out_fname, mode='w') as io:
     io.write(nwbfile, cache_spec=False)

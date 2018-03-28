@@ -26,7 +26,7 @@ cat_cell_info = NWBGroupSpec(neurodata_type_def='CatCellInfo',
                                                       dtype='RefSpec'),
                                        NWBDatasetSpec(name='values',
                                                       doc='list of unique values',
-                                                      shope=(None, 1), dtype='str')],
+                                                      shape=(None, 1), dtype='str')],
                              neurodata_type_inc='NWBDataInterface')
 
 population_spike_times = NWBGroupSpec(neurodata_type_def='PopulationSpikeTimes',
