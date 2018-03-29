@@ -38,12 +38,14 @@ module_behavior = nwbfile.create_processing_module(name='behavior',
 
 all_ts = []
 
-channel_groups = get_channel_groups(fpath, fname)
-shank_channels = get_shank_channels(fpath, fname)
+xml_filepath = os.path.join(fpath, fname + '.xml')
+
+channel_groups = get_channel_groups(xml_filepath)
+shank_channels = get_shank_channels(xml_filepath)
 nshanks = len(shank_channels)
 all_shank_channels = np.concatenate(shank_channels)
 nchannels = sum(len(x) for x in channel_groups)
-lfp_fs = get_lfp_sampling_rate(fpath, fname)
+lfp_fs = get_lfp_sampling_rate(xml_filepath)
 
 lfp_channel = 0  # value taken from Yuta's spreadsheet
 
@@ -75,7 +77,7 @@ print('done.')
 print('setting up electrodes...', end='', flush=True)
 # shank electrodes
 electrode_counter = 0
-for shankn, channels in zip(range(nshanks), shank_channels):
+for shankn, channels in enumerate(shank_channels):
     device_name = 'shank{}'.format(shankn)
     device = nwbfile.create_device(device_name, fname + '.xml')
     electrode_group = nwbfile.create_electrode_group(

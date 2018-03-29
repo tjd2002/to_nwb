@@ -24,21 +24,20 @@ def load_xml(filepath):
     return soup
 
 
-def get_channel_groups(fpath, fname):
+def get_channel_groups(xml_filepath):
     """Get the groups of channels that are recorded on each shank from the xml
     file
 
     Parameters
     ----------
-    fpath: str
-    fname: str
+    xml_filepath: str
 
     Returns
     -------
     list(list)
 
     """
-    xml_filepath = os.path.join(fpath, fname + '.xml')
+
     soup = load_xml(xml_filepath)
 
     channel_groups = [[int(channel.string)
@@ -48,19 +47,17 @@ def get_channel_groups(fpath, fname):
     return channel_groups
 
 
-def get_shank_channels(fpath, fname):
+def get_shank_channels(xml_filepath):
     """Read the channels on the shanks in Neuroscope xml
 
     Parameters
     ----------
-    fpath: str
-    fname: str
+    xml_filepath: str
 
     Returns
     -------
 
     """
-    xml_filepath = os.path.join(fpath, fname + '.xml')
     soup = load_xml(xml_filepath)
 
     shank_channels = [[int(channel.string)
@@ -69,7 +66,7 @@ def get_shank_channels(fpath, fname):
     return shank_channels
 
 
-def get_lfp_sampling_rate(fpath, fname):
+def get_lfp_sampling_rate(xml_filepath):
     """Reads the LFP Sampling Rate from the xml parameter file of the
     Neuroscope format
 
@@ -83,10 +80,7 @@ def get_lfp_sampling_rate(fpath, fname):
     fs: float
 
     """
-    xml_filepath = os.path.join(fpath, fname + '.xml')
-    soup = load_xml(xml_filepath)
-
-    return float(soup.lfpSamplingRate.string)
+    return float(load_xml(xml_filepath).lfpSamplingRate.string)
 
 
 def get_position_data(fpath, fname, fs=1250./32.,
