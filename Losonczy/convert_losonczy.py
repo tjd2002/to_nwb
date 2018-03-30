@@ -12,8 +12,10 @@ from pynwb.ophys import OpticalChannel, TwoPhotonSeries
 from pynwb.image import ImageSeries
 
 
-from neuroscope import get_channel_groups, get_lfp_sampling_rate
-from general import gzip
+from ..neuroscope import get_channel_groups
+from ..general import gzip
+
+from .lfp_helpers import loadEEG
 
 NA = 'THIS REQUIRED ATTRIBUTE INTENTIONALLY LEFT BLANK.'
 SHORTEN = True
@@ -34,21 +36,23 @@ nwbfile = NWBFile(source, session_description, identifier,
                   institution=institution, lab=lab)
 all_ts = []
 
-lfp_xml_fpath = os.path.join(fpath, 'LFP', 'svr009_Day2_FOV1_170504_131823.xml')
+eeg_base_name = os.path.join(fpath, 'LFP', 'svr009_Day2_FOV1_170504_131823')
+eeg_dict = loadEEG(eeg_base_name)
+
+lfp_xml_fpath = eeg_base_name + '.xml'
 channel_groups = get_channel_groups(lfp_xml_fpath)
 lfp_channels = channel_groups[0]
-lfp_fs = get_lfp_sampling_rate(lfp_xml_fpath)
-nchannels = sum(len(x) for x in channel_groups)
+lfp_fs = eeg_dict['sampleFreq']
+nchannels = eeg_dict['nChannels']
 
-eeg_file = os.path.join(fpath, 'LFP/svr009_Day2_FOV1_170504_131823.eeg')
-all_channels = np.fromfile(eeg_file, dtype=np.int16).reshape(-1, nchannels)
-lfp_signal = all_channels[:, lfp_channels]
+
+lfp_signal = eeg_dict['EEG'][:, lfp_channels]
 
 device_name = 'LFP device'
 device = nwbfile.create_device(device_name, source=source)
 electrode_group = nwbfile.create_electrode_group(
     name=device_name + '_electrodes',
-    source=fname + '.xml',
+    source=lfp_xml_fpath,
     description=device_name,
     device=device,
     location='unknown')

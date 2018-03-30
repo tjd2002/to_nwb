@@ -37,6 +37,7 @@ def loadEVT(filepath, evt):
 
     return {d: evt_list for d, evt_list in zip(delims, evt_lists)}
 
+
 def writeEVT(filepath, evt_list, evt_names):
     # evt_list is a list of lists, each list containing each time, in ms, of an event
     # e.g., tstart, tpeak, tend
@@ -50,7 +51,28 @@ def writeEVT(filepath, evt_list, evt_names):
         with open(filepath, 'a') as f:
             f.write(write_str)
 
-def loadEEG(eegBaseName, channels=0):
+
+def loadEEG(eegBaseName, channels=None):
+    """
+
+    Parameters
+    ----------
+    eegBaseName: str
+        path of .eeg file w/out the '.egg'
+    channels: None or list of ints (0-indexed)
+
+    Returns
+    -------
+    dict:
+        EEG: np.array(nchan, ntime)
+        tEEG: np.array(ntime)
+        sampleFreq: float
+        channels: list of ints
+        nChannels: int
+        fileBase: str
+        filePath: str
+
+    """
 
     eegTree = ET.parse(eegBaseName + '.xml')
     eegRoot = eegTree.getroot()
@@ -65,13 +87,13 @@ def loadEEG(eegBaseName, channels=0):
     EEG = np.reshape(EEG, (-1, nChan))
     EEG = np.transpose(EEG, (1, 0))
 
-    if channels != 0:
+    if channels is not None:
         EEG = EEG[channels]
     else:
         channels = range(nChan)
 
     tEEG = np.arange(EEG.shape[1]) / sampFreq
-    eegObj = {'EEG': EEG, 'tEEG': tEEG, 'sampeFreq': sampFreq,
+    eegObj = {'EEG': EEG, 'tEEG': tEEG, 'sampleFreq': sampFreq,
               'channels': channels, 'nChannels': nChan,
               'fileBase': eegBaseName, 'filePath': os.getcwd()}
 
@@ -197,6 +219,7 @@ def find_frame_times(eegFile, signal_idx=-1, min_interval=40, every_n=1):
     frame_times = argrelextrema(pc_signal, np.greater, order=min_interval)[0]
     return frame_times[::every_n]
 
+
 def closest_idx(array, values):
     # for each value in values return index of element
     # in array that is closest to that value
@@ -212,6 +235,7 @@ def closest_idx(array, values):
     idxs[prev_idx_is_less] -= 1
 
     return idxs
+
 
 def fastDownSample(chanIn, downRatio):
     padN = downRatio - np.mod(len(chanIn), downRatio)
