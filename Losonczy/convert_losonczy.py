@@ -16,6 +16,7 @@ from neuroscope import get_channel_groups, get_lfp_sampling_rate
 from general import gzip
 
 NA = 'THIS REQUIRED ATTRIBUTE INTENTIONALLY LEFT BLANK.'
+SHORTEN = True
 
 
 fpath = '/Users/bendichter/Desktop/Losonczy/from_sebi/example_data'
@@ -78,8 +79,6 @@ nwbfile.add_acquisition(LFP(source=source, electrical_series=lfp_elec_series))
 
 
 
-
-
 optical_channel = OpticalChannel(
     name='Optical Channel',
     source=NA,
@@ -99,11 +98,15 @@ imaging_h5_filepath = '/Users/bendichter/Desktop/Losonczy/from_sebi/example_data
 
 
 with h5py.File(imaging_h5_filepath, 'r') as f:
-    imaging_data = f['imaging'][:]
+    if SHORTEN:
+        imaging_data = f['imaging'][:100, ...]
+    else:
+        imaging_data = f['imaging'][:]
 
-image_series = TwoPhotonSeries(name='test_iS', source='Ca2+ imaging example', dimension=[2],
+image_series = TwoPhotonSeries(name='image', source='Ca2+ imaging example', dimension=[2],
                                data=imaging_data, imaging_plane=imaging_plane,
-                               starting_frame=[0], timestamps=list())
+                               starting_frame=[0], timestamps=[1,2,3], scan_line_rate=np.nan,
+                               pmt_gain=np.nan)
 nwbfile.add_acquisition(image_series)
 
 
@@ -121,6 +124,5 @@ with NWBHDF5IO(out_fname, mode='r') as io:
     io.read()
 print('done.')
 
-f.close()
 
 
