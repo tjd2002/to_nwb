@@ -12,12 +12,6 @@ ns_path = name + '.namespace.yaml'
 ext_source = name + '.extensions.yaml'
 load_namespaces(ns_path)
 
-PopulationSpikeTimes = get_class('PopulationSpikeTimes', name)
 CatCellInfo = get_class('CatCellInfo', name)
-#ContCellInfo = get_class('ContCellInfo', name)
-
-
-
-
 
 

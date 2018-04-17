@@ -6,15 +6,11 @@ from scipy.io import loadmat
 
 from pynwb import NWBFile, NWBHDF5IO
 from pynwb.behavior import SpatialSeries, Position
-from pynwb.ecephys import ElectricalSeries, Clustering
-from pynwb.epoch import Epochs
+from pynwb.ecephys import ElectricalSeries
 
 from utils import find_discontinuities
-from neuroscope import (get_channel_groups, get_shank_channels,
-                        get_lfp_sampling_rate, get_position_data, gzip,
-                        get_clusters_single_shank, build_unit_times)
-
-from general import CatCellInfo
+import neuroscope as ns
+from general import CatCellInfo, gzip
 
 WRITE_ALL_LFPS = False
 
@@ -32,25 +28,22 @@ source = fname
 nwbfile = NWBFile(source, session_description, identifier,
                   session_start_time, datetime.now(),
                   institution=institution, lab=lab)
-module_behavior = nwbfile.create_processing_module(name='behavior',
-                                                   source=source,
-                                                   description=source)
 
 all_ts = []
 
 xml_filepath = os.path.join(fpath, fname + '.xml')
 
-channel_groups = get_channel_groups(xml_filepath)
-shank_channels = get_shank_channels(xml_filepath)
+channel_groups = ns.get_channel_groups(xml_filepath)
+shank_channels = ns.get_shank_channels(xml_filepath)
 nshanks = len(shank_channels)
 all_shank_channels = np.concatenate(shank_channels)
 nchannels = sum(len(x) for x in channel_groups)
-lfp_fs = get_lfp_sampling_rate(xml_filepath)
+lfp_fs = ns.get_lfp_sampling_rate(xml_filepath)
 
 lfp_channel = 0  # value taken from Yuta's spreadsheet
 
 print('reading raw position data...', end='', flush=True)
-pos_df = get_position_data(fpath, fname)
+pos_df = ns.get_position_data(fpath, fname)
 print('done.')
 
 print('setting up raw position data...', end='', flush=True)
@@ -103,7 +96,7 @@ for shankn, channels in enumerate(shank_channels):
         electrode_counter += 1
 
 # special electrodes
-device_name = 'special_electrodes'
+device_name = 'special'
 device = nwbfile.create_device(device_name, fname + '.xml')
 electrode_group = nwbfile.create_electrode_group(
     name=device_name + '_electrodes',
@@ -169,7 +162,9 @@ task_types = ['OpenFieldPosition_ExtraLarge', 'OpenFieldPosition_New_Curtain',
               'OpenFieldPosition_New', 'OpenFieldPosition_Old_Curtain',
               'OpenFieldPosition_Old', 'OpenFieldPosition_Oldlast']
 
-epochs = Epochs(source=source)
+module_behavior = nwbfile.create_processing_module(name='behavior',
+                                                   source=source,
+                                                   description=source)
 for label in task_types:
     print('loading normalized position data for ' + label + '...', end='', flush=True)
     file = os.path.join(fpath, fname + '__' + label)
@@ -195,20 +190,7 @@ for label in task_types:
     for i, window in enumerate(exp_times):
         nwbfile.create_epoch(start_time=window[0], stop_time=window[1],
                          tags=tuple(), description=label + '_' + str(i),
-                         timeseries=all_ts)
-    print('done.')
-
-module_clustering = nwbfile.create_processing_module(name='clustering',
-                                                     source=source,
-                                                     description=source)
-for shank_num in np.arange(1, nshanks + 1):
-    print('loading spike times for shank ' + str(shank_num) + '...', end='')
-    df = get_clusters_single_shank(fpath, fname, shank_num)
-    clu = Clustering(source='source', description='noise and multiunit removed',
-                     num=np.array(df['id']), peak_over_rms=[np.nan],
-                     times=gzip(np.array(df['time'])),
-                     name='shank' + str(shank_num))
-    module_clustering.add_container(clu)
+                         timeseries=all_ts+[spatial_series_object])
     print('done.')
 
 ## load celltypes
@@ -250,18 +232,18 @@ for celltype_id, region_id in zip(celltype_ids, region_ids):
 
 u_cats, indices = np.unique(celltype_names, return_inverse=True)
 
-cci_obj = CatCellInfo(name='Cell Types',
+cci_obj = CatCellInfo(name='CellTypes',
                       source='DG_all_6__UnitFeatureSummary_add.mat',
                       values=u_cats, indices=indices,
                       cell_index=list(range(len(indices))))
 
-ut_obj = build_unit_times(fpath, fname)
+ut_obj = ns.build_unit_times(fpath, fname)
 
 module_spikes = nwbfile.create_processing_module('spikes', source=source,
                                                  description=source)
 
 module_spikes.add_container(ut_obj)
-#module_spikes.add_container(cci_obj)
+module_spikes.add_container(cci_obj)
 
 out_fname = 'yuta_data3.nwb'
 print('writing NWB file...', end='', flush=True)
