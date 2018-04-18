@@ -3,8 +3,11 @@ import os
 from datetime import datetime
 import numpy as np
 from scipy.io import loadmat
+from dateutil.parser import parse as dateparse
+import pandas as pd
 
 from pynwb import NWBFile, NWBHDF5IO
+from pynwb.file import Subject
 from pynwb.behavior import SpatialSeries, Position
 from pynwb.ecephys import ElectricalSeries
 
@@ -16,18 +19,32 @@ WRITE_ALL_LFPS = False
 
 
 fpath = '/Users/bendichter/Desktop/Buzsaki/SenzaiBuzsaki2017/YutaMouse41-150903'
+subject_fpath = '/Users/bendichter/Desktop/Buzsaki/SenzaiBuzsaki2017/YM41 exp_sheet.xlsx'
 fpath_base, fname = os.path.split(fpath)
 session_description = 'mouse in open exploration and theta maze'
 identifier = fname
-session_start_time = datetime(2015, 7, 31)
 institution = 'NYU'
 lab = 'Buzsaki'
 
+subject_id, date_text = fname.split('-')
+session_start_time = dateparse(date_text, yearfirst=True)
+
+df = pd.read_excel(subject_fpath)
+
+subject_data = {}
+for key in ['genotype', 'DOB', 'implantation', 'Probe']:
+    subject_data[key] = df.ix[df.ix[:, 0] == key, 1].values[0]
+
+age = session_start_time - subject_data['DOB']
+
+subject = Subject(subject_id=subject_id, age=str(age),
+                  genotype=subject_data['genotype'],
+                  species='mouse', source='source')
 
 source = fname
 nwbfile = NWBFile(source, session_description, identifier,
                   session_start_time, datetime.now(),
-                  institution=institution, lab=lab)
+                  institution=institution, lab=lab, subject=subject)
 
 all_ts = []
 
@@ -183,7 +200,7 @@ for label in task_types:
                                           resolution=np.nan,
                                           timestamps=gzip(tt))
     pos_obj = Position(source=source, spatial_series=spatial_series_object,
-                       name=label + ' position')
+                       name=label + '_position')
 
     module_behavior.add_container(pos_obj)
 
@@ -245,7 +262,7 @@ module_spikes = nwbfile.create_processing_module('spikes', source=source,
 module_spikes.add_container(ut_obj)
 module_spikes.add_container(cci_obj)
 
-out_fname = 'yuta_data3.nwb'
+out_fname = fname + '.nwb'
 print('writing NWB file...', end='', flush=True)
 with NWBHDF5IO(out_fname, mode='w') as io:
     io.write(nwbfile, cache_spec=False)
@@ -256,4 +273,3 @@ print('testing read...', end='', flush=True)
 with NWBHDF5IO(out_fname, mode='r') as io:
     io.read()
 print('done.')
-
