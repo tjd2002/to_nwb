@@ -12,10 +12,10 @@ from pynwb.ophys import OpticalChannel, TwoPhotonSeries
 from pynwb.image import ImageSeries
 
 
-from ..neuroscope import get_channel_groups
-from ..general import gzip
+from neuroscope import get_channel_groups
+from general import gzip
 
-from .lfp_helpers import loadEEG
+from Losonczy.lfp_helpers import loadEEG
 
 NA = 'THIS REQUIRED ATTRIBUTE INTENTIONALLY LEFT BLANK.'
 SHORTEN = True
@@ -81,8 +81,6 @@ lfp_elec_series = ElectricalSeries('lfp', 'lfp',
 nwbfile.add_acquisition(LFP(source=source, electrical_series=lfp_elec_series))
 
 
-
-
 optical_channel = OpticalChannel(
     name='Optical Channel',
     source=NA,
@@ -90,27 +88,50 @@ optical_channel = OpticalChannel(
     emission_lambda=NA,
 )
 
-imaging_plane = nwbfile.create_imaging_plane('my_imgpln',
-                                             'Ca2+ imaging example',
-                                             optical_channel,
-                                             'a very interesting part of the brain',
-                                             'imaging_device_1',
-                                             '6.28', '2.718', 'GFP', 'my favorite brain location',
-                                             (1, 2, 1, 2, 3), 4.0, 'manifold unit', 'A frame to refer to')
+
 
 imaging_h5_filepath = '/Users/bendichter/Desktop/Losonczy/from_sebi/example_data/TSeries-05042017-001_Cycle00001_Element00001.h5'
 
 
 with h5py.File(imaging_h5_filepath, 'r') as f:
     if SHORTEN:
-        imaging_data = f['imaging'][:100, ...]
+        all_imaging_data = f['imaging'][:100, ...]
     else:
-        imaging_data = f['imaging'][:]
+        all_imaging_data = f['imaging'][:]
+    channel_names = f['imaging'].attrs['channel_names']
+    elem_size_um = f['imaging'].attrs['element_size_um']
 
-image_series = TwoPhotonSeries(name='image', source='Ca2+ imaging example', dimension=[2],
-                               data=imaging_data, imaging_plane=imaging_plane,
-                               starting_frame=[0], timestamps=[1,2,3], scan_line_rate=np.nan,
-                               pmt_gain=np.nan)
+# t,z,y,x,c -> t,x,y,z,c
+all_imaging_data = np.swapaxes(all_imaging_data, 1, 3)
+
+# t,x,y,z,c -> c,t,(x,y,z)
+all_imaging_data = np.rollaxis(all_imaging_data, 4)
+nx, ny, nz = all_imaging_data.shape[-3:]
+
+manifold = np.meshgrid(np.arange(nx)*elem_size_um[2],
+                       np.arange(ny)*elem_size_um[0],
+                       np.arange(nz)*elem_size_um[1])
+
+
+imaging_plane = nwbfile.create_imaging_plane(
+    name='my_imgpln', source='Ca2+ imaging example',
+    optical_channel=optical_channel,
+    description='unknown',
+    device='imaging_device_1', excitation_lambda='unknown',
+    imaging_rate='unknown', indicator='GFP',
+    location='unknown',
+    manifold=np.array([]),
+    conversion=1.0,
+    unit='um',
+    reference_frame='A frame to refer to')
+
+for channel_name, imaging_data in zip(channel_names, all_imaging_data):
+    image_series = TwoPhotonSeries(name='image', source='Ca2+ imaging example',
+                                   dimension=[2], data=imaging_data,
+                                   imaging_plane=imaging_plane,
+                                   starting_frame=[0], timestamps=[1,2,3],
+                                   scan_line_rate=np.nan,
+                                   pmt_gain=np.nan)
 nwbfile.add_acquisition(image_series)
 
 
