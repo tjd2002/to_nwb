@@ -2,8 +2,7 @@ import numpy as np
 from datetime import datetime
 import h5py
 
-from pynwb.spec import (NWBGroupSpec, NWBDatasetSpec, NWBAttributeSpec,
-                        NWBNamespaceBuilder)
+from pynwb.spec import (NWBGroupSpec, NWBDatasetSpec, NWBNamespaceBuilder)
 from pynwb import get_class, load_namespaces, NWBHDF5IO, NWBFile
 
 
@@ -30,19 +29,14 @@ def build_ext():
                        name='element_id'),
         NWBDatasetSpec(doc='relative position of recording within a given compartment',
                        dtype='float',
-                       shape=(None, 1),
+                       shape=(None, None),
                        name='element_pos')
     ]
 
-    attributes = [
-        NWBAttributeSpec('cell_var', 'variable being recorded in the data table', 'text')
-    ]
-
     cont_data = NWBGroupSpec(doc='A spec for storing cell recording variables',
-                             attributes=attributes,
                              datasets=datasets,
                              neurodata_type_inc='TimeSeries',
-                             neurodata_type_def='VarTable')
+                             neurodata_type_def='CompartmentSeries')
 
     ns_builder.add_spec(ext_source, cont_data)
     ns_builder.export(ns_path)
@@ -50,25 +44,27 @@ def build_ext():
 
 def build_toy_example():
     load_namespaces(ns_path)
-    VarTable = get_class('VarTable', project_name)
-    vmtable = VarTable(source='source',
-                       name='vm_table',
-                       gid=[1, 2, 3],
-                       index_pointer=[1, 2, 3],
-                       cell_var='Membrane potential (mV)',
-                       data=[[1., 2., 4.], [1., 2., 4.]],
-                       timestamps=np.arange(2),
-                       element_id=[0, 0, 0],
-                       element_pos=[1., 1., 1.])
+    CompartmentSeries = get_class('CompartmentSeries', project_name)
+    membrane_potential = CompartmentSeries(source='source',
+                                           name='membrane_potential',
+                                           gid=[1, 2, 3],
+                                           index_pointer=[1, 2, 3],
+                                           cell_var='Membrane potential (mV)',
+                                           data=[[1., 2., 4.], [1., 2., 4.]],
+                                           timestamps=np.arange(2),
+                                           element_id=[0, 0, 0],
+                                           element_pos=[1., 1., 1.],
+                                           unit='µV')
 
     nwbfile = NWBFile(source='source', session_description='session_description',
                       identifier='identifier', session_start_time=datetime.now(),
                       file_create_date=datetime.now(), institution='institution',
                       lab='lab')
 
-    module = nwbfile.create_processing_module(name='name', source='source',
+    module = nwbfile.create_processing_module(name='membrane_potential',
+                                              source='source',
                                               description='description')
-    module.add_container(vmtable)
+    module.add_container(membrane_potential)
 
     with NWBHDF5IO('mem_potential_toy.nwb', mode='w') as io:
         io.write(nwbfile)
