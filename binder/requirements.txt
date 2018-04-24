@@ -1,0 +1,10 @@
+# include pynwb from source (specify a particular commit instead?)
+# Note do not use '--no-index', or else pip won't be able to install the requirements
+# specified by pynwb
+# Because binder is starting from a stripped-down docker, we don't need to worry
+# about forcing upgrade (since pynwb won't already be installed)
+-f https://github.com/NeurodataWithoutBorders/pynwb/releases/tag/latest
+pynwb
+
+datetime
+numpy
