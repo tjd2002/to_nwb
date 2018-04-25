@@ -1,20 +1,12 @@
-# Because binder is starting from a stripped-down docker, we don't need to worry
-# about forcing upgrade with -U (since pynwb won't already be installed)
+# pin version of pynwb (pulled from PyPI; pip will handle dependencies)
+pynwb=0.3.0
 
-# point to specific pre-release commit (so that Binder won't break unexpectedly with dev changes). 
-# Can't use a tag like 'latest', since Binder won't know to rebuild when it changes (and will cache 
-# last build)
--e git+https://github.com/NeurodataWithoutBorders/pynwb.git@8e60520#egg=pynwb # 0.3.0.post0.dev2
+# Should we need to specify a pre-release version of pynwb:
+## Point to specific pre-release commit (so that Binder won't break unexpectedly with dev changes). 
+## NB: Even if we wanted bleeding edge of 'dev' branch, we can't use a link to a tag like 'latest', 
+## since Binder won't know to rebuild when it changes.
+#-e git+https://github.com/NeurodataWithoutBorders/pynwb.git@8e60520cbc225e2e0379545087e5ce937637736d#egg=pynwb-0.3.0.post0.dev2
 
-# Must specify a version including dev string to get pre-release versions
-# [Note do not use '--no-index', or else pip won't be able to install the requirements
-# specified by pynwb]
-#-f https://github.com/NeurodataWithoutBorders/pynwb/releases/tag/latest
-#pynwb>=0.0.dev0
-
-# download a specific release (but might as well use PyPI in this case, since our releases 
-# are automatically pushed there.
-#https://github.com/NeurodataWithoutBorders/pynwb/releases/download/0.3.0/pynwb-0.3.0.tar.gz
-
+# reqs for ephys_tutorial/write_ephys.ipynb
 datetime
 numpy
