@@ -1,5 +1,5 @@
 # pin version of pynwb (pulled from PyPI; pip will handle dependencies)
-pynwb=0.3.0
+pynwb==0.3.0
 
 # Should we need to specify a pre-release version of pynwb:
 ## Point to specific pre-release commit (so that Binder won't break unexpectedly with dev changes). 
